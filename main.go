@@ -56,7 +56,7 @@ type Configuration struct {
 }
 
 func Conf() (conf Configuration) {
-	file, _ := os.Open("config.json")
+	file, _ := os.Open("/var/www/carGo/config.json")
 	defer file.Close()
 
 	decoder := json.NewDecoder(file)
@@ -133,6 +133,8 @@ func getBrands(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin","*")
+        w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	fmt.Fprint(w, string(obj))
 	defer result.Close()
 
@@ -174,6 +176,8 @@ func getModels(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-type", "application/json")
+        w.Header().Set("Access-Control-Allow-Origin","*")
+        w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	fmt.Fprint(w, string(obj))
 	defer result.Close()
 
@@ -215,9 +219,36 @@ func getGenRidc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-type", "application/json")
+        w.Header().Set("Access-Control-Allow-Origin","*")
+        w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	fmt.Fprint(w, string(obj))
 	defer result.Close()
 
+}
+
+func getLastId(table string) (lastId int){
+        query := "select max(id) as lastId from " + table
+
+        db := dbConnect()
+        defer db.Close()
+
+        // query
+
+        result, err := db.Query(query)
+
+        if err != nil {
+                panic(err.Error())
+        }
+
+        for result.Next() {
+                err = result.Scan(&lastId)
+                if err != nil {
+                        panic(err.Error())
+                }
+		return
+        }
+	lastId = 0
+	return
 }
 
 func createBrand(w http.ResponseWriter, r *http.Request) {
@@ -231,6 +262,7 @@ func createBrand(w http.ResponseWriter, r *http.Request) {
 
 	query := fmt.Sprintf("insert into brand (name, url_us, url_ridc) VALUES('%s', '%s', '%s')", newBrand.Name, newBrand.Url_us, newBrand.Url_ridc)
 	executeQuery(query)
+	newBrand.Id = getLastId("brand")
 
 	obj, err := json.Marshal(newBrand)
 
@@ -253,6 +285,7 @@ func createModel(w http.ResponseWriter, r *http.Request) {
 
 	query := fmt.Sprintf("insert into model (name, brand, url_us) VALUES('%s', %d, '%s')", newModel.Name, newModel.Brand, newModel.Url_us)
 	executeQuery(query)
+	newModel.Id = getLastId("model")
 
 	obj, err := json.Marshal(newModel)
 
